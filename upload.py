@@ -75,6 +75,7 @@ def main():
     generate_indexes(args.directory, args.index, args.force)
 
     # TODO: Try to inject content using the Ouinet client.
+    # TODO: Optionally seed content through the Ouinet client or an IPFS node.
 
 if __name__ == '__main__':
     main()

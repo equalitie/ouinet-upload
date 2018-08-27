@@ -41,6 +41,17 @@ def gen_index(iname, dname, dirnames, filenames):
     rt = INDEX_TAIL
     return ''.join([rh, rup, rdl, rfl, rt])
 
+def generate_indexes(path, idxname, force=False):
+    for (dirpath, dirnames, filenames) in os.walk(path):
+        index_fn = os.path.join(dirpath, idxname)
+        if not force and os.path.exists(index_fn):
+            raise RuntimeError("refusing to overwrite existing index file: %s"
+                               % index_fn)
+        index = gen_index(idxname,
+                          os.path.basename(dirpath), dirnames, filenames)
+        with open(index_fn, 'w') as index_f:
+            index_f.write(index)
+
 def main():
     parser = argparse.ArgumentParser(
         description="Prepare a content directory and publish it to Ouinet.")
@@ -61,15 +72,7 @@ def main():
     args = parser.parse_args()
 
     print("Creating index files...", file=sys.stderr)
-    for (dirpath, dirnames, filenames) in os.walk(args.directory):
-        index_fn = os.path.join(dirpath, args.index)
-        if not args.force and os.path.exists(index_fn):
-            raise RuntimeError("refusing to overwrite existing index file: %s"
-                               % index_fn)
-        index = gen_index(args.index,
-                          os.path.basename(dirpath), dirnames, filenames)
-        with open(index_fn, 'w') as index_f:
-            index_f.write(index)
+    generate_indexes(args.directory, args.index, args.force)
 
     # TODO: Try to inject content using the Ouinet client.
 

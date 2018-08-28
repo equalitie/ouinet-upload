@@ -56,7 +56,7 @@ def main():
     parser = argparse.ArgumentParser(
         description="Prepare a content directory and publish it to Ouinet.")
     parser.add_argument(
-        '--proxy', metavar="HOST:PORT", default=CLIENT_PROXY,
+        '--client-proxy', metavar="HOST:PORT", default=CLIENT_PROXY,
         help=("the HOST and PORT of the Ouinet client's HTTP proxy"
               " (default: %s)" % CLIENT_PROXY))
     parser.add_argument(

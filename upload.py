@@ -64,7 +64,7 @@ def main():
         help=("the NAME of the index file to be created in each subdirectory "
               " (default: %s)" % INDEX_NAME))
     parser.add_argument(
-        '--force', default=False, action='store_true',
+        '--force-index', default=False, action='store_true',
         help=("overwrite existing index files"))
     parser.add_argument(
         'directory', metavar="DIR",
@@ -72,7 +72,7 @@ def main():
     args = parser.parse_args()
 
     print("Creating index files...", file=sys.stderr)
-    generate_indexes(args.directory, args.index_name, args.force)
+    generate_indexes(args.directory, args.index_name, args.force_index)
 
     # TODO: Try to inject content using the Ouinet client.
     # TODO: Optionally seed content through the Ouinet client or an IPFS node.

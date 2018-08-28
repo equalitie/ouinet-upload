@@ -4,8 +4,10 @@
 
 import argparse
 import html
+import json
 import os
 import sys
+import urllib.request
 
 
 CLIENT_PROXY='localhost:8080'
@@ -32,6 +34,9 @@ INDEX_TAIL="""\
 </body>
 """
 
+API_UPLOAD_EP = 'http://localhost/upload'
+
+
 def gen_index(iname, dname, dirnames, filenames):
     q = html.escape
     rh = INDEX_HEAD % (q(dname),)
@@ -52,6 +57,22 @@ def generate_indexes(path, idxname, force=False):
         with open(index_fn, 'w') as index_f:
             index_f.write(index)
 
+def seed_files(path, proxy):
+    proxy_handler = urllib.request.ProxyHandler({'http': 'http://' + proxy})
+    url_opener = urllib.request.build_opener(proxy_handler)
+
+    for (dirpath, dirnames, filenames) in os.walk(path):
+        for fn in filenames:
+            fpath = os.path.join(dirpath, fn)
+            fstat = os.stat(fpath)
+            with open(fpath, 'rb') as f:  # binary matters!
+                req = urllib.request.Request(API_UPLOAD_EP, data=f)
+                req.add_header('Content-Type', 'application/octet-stream')
+                req.add_header('Content-Length', fstat.st_size)
+                with url_opener.open(req) as res:
+                    msg = json.loads(res.read())
+                    print(fpath, '->', ', '.join(msg['data_links']), file=sys.stderr)
+
 def main():
     parser = argparse.ArgumentParser(
         description="Prepare a content directory and publish it to Ouinet.")
@@ -67,6 +88,9 @@ def main():
         '--force-index', default=False, action='store_true',
         help=("overwrite existing index files"))
     parser.add_argument(
+        '--seed', default=False, action='store_true',
+        help=("upload files to the Ouinet client for it to seed them"))
+    parser.add_argument(
         'directory', metavar="DIR",
         help="the content directory to prepare and publish")
     args = parser.parse_args()
@@ -74,8 +98,11 @@ def main():
     print("Creating index files...", file=sys.stderr)
     generate_indexes(args.directory, args.index_name, args.force_index)
 
+    if args.seed:
+        print("Uploading files to the Ouinet client...", file=sys.stderr)
+        seed_files(args.directory, args.client_proxy)
+
     # TODO: Try to inject content using the Ouinet client.
-    # TODO: Optionally seed content through the Ouinet client or an IPFS node.
 
 if __name__ == '__main__':
     main()

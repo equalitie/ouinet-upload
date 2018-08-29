@@ -91,12 +91,10 @@ def main():
         '--seed', default=False, action='store_true',
         help=("upload files to the Ouinet client for it to seed them"))
     parser.add_argument(
-        'directory', metavar="DIR",
+        # Normalize to avoid confusing ``os.path.{base,dir}name()``.
+        'directory', metavar="DIR", type=os.path.normpath,
         help="the content directory to prepare and publish")
     args = parser.parse_args()
-    # Strip trailing slashes to avoid confusing ``os.path.{base,dir}name()``
-    # down the road.
-    args.directory = args.directory.rstrip(os.path.sep)
 
     print("Creating index files...", file=sys.stderr)
     generate_indexes(args.directory, args.index_name, args.force_index)

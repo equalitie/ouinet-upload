@@ -94,6 +94,9 @@ def main():
         'directory', metavar="DIR",
         help="the content directory to prepare and publish")
     args = parser.parse_args()
+    # Strip trailing slashes to avoid confusing ``os.path.{base,dir}name()``
+    # down the road.
+    args.directory = args.directory.rstrip(os.path.sep)
 
     print("Creating index files...", file=sys.stderr)
     generate_indexes(args.directory, args.index_name, args.force_index)

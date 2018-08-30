@@ -88,18 +88,22 @@ def main():
         '--force-index', default=False, action='store_true',
         help=("overwrite existing index files"))
     parser.add_argument(
-        '--seed', default=False, action='store_true',
-        help=("upload files to the Ouinet client for it to seed them"))
-    parser.add_argument(
         # Normalize to avoid confusing ``os.path.{base,dir}name()``.
         'directory', metavar="DIR", type=os.path.normpath,
         help="the content directory to prepare and publish")
+    parser.add_argument(
+        'action', metavar='ACTION', nargs='+', choices='index seed inject'.split(),
+        help=("actions to perform:"
+              " 'index' creates per-directory index files,"
+              " 'seed' uploads files to the Ouinet client for it to seed them,"
+              " 'inject' requests files via the Ouinet client to insert them"))
     args = parser.parse_args()
 
-    print("Creating index files...", file=sys.stderr)
-    generate_indexes(args.directory, args.index_name, args.force_index)
+    if 'index' in args.action:
+        print("Creating index files...", file=sys.stderr)
+        generate_indexes(args.directory, args.index_name, args.force_index)
 
-    if args.seed:
+    if 'seed' in args.action:
         print("Uploading files to the Ouinet client...", file=sys.stderr)
         seed_files(args.directory, args.client_proxy)
 

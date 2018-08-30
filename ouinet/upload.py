@@ -92,7 +92,7 @@ def seed_files(path, proxy):
                 req.add_header('Content-Length', fstat.st_size)
                 with url_opener.open(req) as res:
                     msg = json.loads(res.read())
-                    print(fpath, '->', ', '.join(msg['data_links']), file=sys.stderr)
+                    print('^', fpath, ':', ' '.join(msg['data_links']), file=sys.stderr)
 
 _uri_rx = re.compile(r'^[a-z][\+\-\.-0-9a-z]+:')
 
@@ -120,7 +120,7 @@ def inject_uris(path, uri_prefix, proxy):
             uri_tail = path_tail.replace(os.sep, '/')
             uri = uri_prefix + '/' + uri_tail
             with url_opener.open(uri) as res:
-                print('^', uri, file=sys.stderr)
+                print('v', uri, file=sys.stderr)
                 while res.readinto(buf):  # consume body data
                     pass
 

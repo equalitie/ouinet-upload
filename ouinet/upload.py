@@ -11,8 +11,9 @@ import sys
 import urllib.request
 
 
-CLIENT_PROXY='localhost:8080'
-INDEX_NAME='index.html'
+# Defaults for command line options.
+CLIENT_PROXY_DEF='localhost:8080'
+INDEX_NAME_DEF='index.html'
 
 # TODO: Use proper templating for this.
 INDEX_HEAD="""\
@@ -127,13 +128,13 @@ def main():
     parser = argparse.ArgumentParser(
         description="Prepare a content directory and publish it to Ouinet.")
     parser.add_argument(
-        '--client-proxy', metavar="HOST:PORT", default=CLIENT_PROXY,
+        '--client-proxy', metavar="HOST:PORT", default=CLIENT_PROXY_DEF,
         help=("the HOST and PORT of the Ouinet client's HTTP proxy"
-              " (default: %s)" % CLIENT_PROXY))
+              " (default: %s)" % CLIENT_PROXY_DEF))
     parser.add_argument(
-        '--index-name', metavar="NAME", default=INDEX_NAME,
+        '--index-name', metavar="NAME", default=INDEX_NAME_DEF,
         help=("the NAME of the index file to be created in each subdirectory "
-              " (default: %s)" % INDEX_NAME))
+              " (default: %s)" % INDEX_NAME_DEF))
     parser.add_argument(
         '--force-index', default=False, action='store_true',
         help=("overwrite existing index files"))

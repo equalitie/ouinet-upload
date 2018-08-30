@@ -39,6 +39,14 @@ API_UPLOAD_EP = 'http://localhost/upload'
 
 
 def gen_index(iname, dname, dirnames, filenames):
+    """Generate content of index file for a directory.
+
+    The directroy is called `dname` and it has a list of subdirectories
+    (`dirnames`) and files (`filenames`).
+
+    Links to parent and children point straight to the index file called
+    `iname` in them.
+    """
     q = html.escape
     rh = INDEX_HEAD % (q(dname),)
     rup = INDEX_UP_ITEM % (q(iname),)
@@ -48,6 +56,12 @@ def gen_index(iname, dname, dirnames, filenames):
     return ''.join([rh, rup, rdl, rfl, rt])
 
 def generate_indexes(path, idxname, force=False):
+    """Create per-directory index files under the given `path`.
+
+    The index files are called as indicated in `idxname`.  `RuntimeError` is
+    raised if an index file is found to exist.  This can be avoided by setting
+    `force`, in which case it is overwritten.
+    """
     for (dirpath, dirnames, filenames) in os.walk(path):
         index_fn = os.path.join(dirpath, idxname)
         if not force and os.path.exists(index_fn):
@@ -59,6 +73,11 @@ def generate_indexes(path, idxname, force=False):
             index_f.write(index)
 
 def seed_files(path, proxy):
+    """Upload files under `path` to a Ouinet client for it to seed them.
+
+    The client's HTTP proxy endpoint is given in `proxy` as a ``HOST:PORT``
+    string.
+    """
     proxy_handler = urllib.request.ProxyHandler({'http': 'http://' + proxy})
     url_opener = urllib.request.build_opener(proxy_handler)
 
@@ -77,6 +96,14 @@ def seed_files(path, proxy):
 _uri_rx = re.compile(r'^[a-z][\+\-\.-0-9a-z]+:')
 
 def inject_uris(path, uri_prefix, proxy):
+    """Request files under `path` via a Ouinet client to inject them.
+
+    URIs for the files are built by prepending `uri_prefix` to the path of
+    files relative to the given `path`.
+
+    The client's HTTP proxy endpoint is given in `proxy` as a ``HOST:PORT``
+    string.
+    """
     if not _uri_rx.match(uri_prefix):
         raise ValueError("invalid URI prefix: " + uri_prefix)
 

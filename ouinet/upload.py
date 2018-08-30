@@ -6,6 +6,7 @@ import argparse
 import html
 import json
 import os
+import re
 import sys
 import urllib.request
 
@@ -73,6 +74,28 @@ def seed_files(path, proxy):
                     msg = json.loads(res.read())
                     print(fpath, '->', ', '.join(msg['data_links']), file=sys.stderr)
 
+_uri_rx = re.compile(r'^[a-z][\+\-\.-0-9a-z]+:')
+
+def inject_uris(path, uri_prefix, proxy):
+    if not _uri_rx.match(uri_prefix):
+        raise ValueError("invalid URI prefix: " + uri_prefix)
+
+    path_prefix_len = len(path) + len(os.sep)  # to help remove path prefix
+    uri_prefix = uri_prefix.rstrip('/')  # remove trailing slashes
+    proxy_handler = urllib.request.ProxyHandler({'http': 'http://' + proxy})
+    url_opener = urllib.request.build_opener(proxy_handler)
+    buf = bytearray(4096)
+
+    for (dirpath, dirnames, filenames) in os.walk(path):
+        for fn in filenames:
+            path_tail = os.path.join(dirpath, fn)[path_prefix_len:]
+            uri_tail = path_tail.replace(os.sep, '/')
+            uri = uri_prefix + '/' + uri_tail
+            with url_opener.open(uri) as res:
+                print('^', uri, file=sys.stderr)
+                while res.readinto(buf):  # consume body data
+                    pass
+
 def main():
     parser = argparse.ArgumentParser(
         description="Prepare a content directory and publish it to Ouinet.")
@@ -88,6 +111,10 @@ def main():
         '--force-index', default=False, action='store_true',
         help=("overwrite existing index files"))
     parser.add_argument(
+        '--uri-prefix', metavar="URI", default='',
+        help=("URI to prepend to content files' paths when injecting"
+              " (no default)"))
+    parser.add_argument(
         # Normalize to avoid confusing ``os.path.{base,dir}name()``.
         'directory', metavar="DIR", type=os.path.normpath,
         help="the content directory to prepare and publish")
@@ -96,7 +123,7 @@ def main():
         help=("actions to perform:"
               " 'index' creates per-directory index files,"
               " 'seed' uploads files to the Ouinet client for it to seed them,"
-              " 'inject' requests files via the Ouinet client to insert them"))
+              " 'inject' requests files via the Ouinet client to inject them"))
     args = parser.parse_args()
 
     if 'index' in args.action:
@@ -107,7 +134,9 @@ def main():
         print("Uploading files to the Ouinet client...", file=sys.stderr)
         seed_files(args.directory, args.client_proxy)
 
-    # TODO: Try to inject content using the Ouinet client.
+    if 'inject' in args.action:
+        print("Requesting files via the Ouinet client...", file=sys.stderr)
+        inject_uris(args.directory, args.uri_prefix, args.client_proxy)
 
 if __name__ == '__main__':
     main()

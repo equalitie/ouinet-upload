@@ -151,7 +151,7 @@ def main():
         'action', metavar='ACTION', nargs='+', choices='index seed inject'.split(),
         help=("actions to perform:"
               " 'index' creates per-directory index files,"
-              " 'seed' uploads files to the Ouinet client for it to seed them,"
+              " 'seed' uploads files to the Ouinet client for it to seed their data,"
               " 'inject' requests content via the Ouinet client to inject it"))
     args = parser.parse_args()
 

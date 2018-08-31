@@ -97,10 +97,10 @@ def seed_files(path, proxy):
 _uri_rx = re.compile(r'^[a-z][\+\-\.-0-9a-z]+:')
 
 def inject_uris(path, uri_prefix, proxy):
-    """Request files under `path` via a Ouinet client to inject them.
+    """Request content under `path` via a Ouinet client to inject it.
 
-    URIs for the files are built by prepending `uri_prefix` to the path of
-    files relative to the given `path`.
+    URIs for the different items are built by prepending `uri_prefix` to their
+    path relative to the given `path`.
 
     The client's HTTP proxy endpoint is given in `proxy` as a ``HOST:PORT``
     string.
@@ -141,7 +141,7 @@ def main():
         help=("overwrite existing index files"))
     parser.add_argument(
         '--uri-prefix', metavar="URI", default='',
-        help=("URI to prepend to content files' paths when injecting"
+        help=("URI to prepend to content paths when injecting"
               " (no default)"))
     parser.add_argument(
         # Normalize to avoid confusing ``os.path.{base,dir}name()``.
@@ -152,7 +152,7 @@ def main():
         help=("actions to perform:"
               " 'index' creates per-directory index files,"
               " 'seed' uploads files to the Ouinet client for it to seed them,"
-              " 'inject' requests files via the Ouinet client to inject them"))
+              " 'inject' requests content via the Ouinet client to inject it"))
     args = parser.parse_args()
 
     if 'index' in args.action:
@@ -164,7 +164,7 @@ def main():
         seed_files(args.directory, args.client_proxy)
 
     if 'inject' in args.action:
-        print("Requesting files via the Ouinet client...", file=sys.stderr)
+        print("Requesting content via the Ouinet client...", file=sys.stderr)
         inject_uris(args.directory, args.uri_prefix, args.client_proxy)
 
 if __name__ == '__main__':

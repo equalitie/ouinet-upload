@@ -115,6 +115,7 @@ def inject_uris(path, uri_prefix, proxy):
     buf = bytearray(4096)
 
     for (dirpath, dirnames, filenames) in os.walk(path):
+        filenames.insert(0, '')  # also inject URI of directory itself
         for fn in filenames:
             path_tail = os.path.join(dirpath, fn)[path_prefix_len:]
             uri_tail = path_tail.replace(os.sep, '/')

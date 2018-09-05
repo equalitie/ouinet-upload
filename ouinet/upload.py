@@ -210,21 +210,17 @@ def main():
         'directory', metavar="DIR", type=os.path.normpath,
         help="the content directory to prepare and publish")
     parser.add_argument(
-        'action', metavar='ACTION', nargs='+', choices='index seed inject desc'.split(),
+        'action', metavar='ACTION', nargs='+', choices='index inject desc seed'.split(),
         help=("actions to perform:"
               " 'index' creates per-directory index files,"
-              " 'seed' uploads files to the Ouinet client for it to seed their data,"
               " 'inject' requests content via the Ouinet client to inject it,"
-              " 'desc' fetches URI descriptors via the Ouinet client and stores them beside content"))
+              " 'desc' fetches URI descriptors via the Ouinet client and stores them beside content,"
+              " 'seed' uploads files to the Ouinet client for it to seed their data"))
     args = parser.parse_args()
 
     if 'index' in args.action:
         print("Creating index files...", file=sys.stderr)
         generate_indexes(args.directory, args.index_name, args.force_index)
-
-    if 'seed' in args.action:
-        print("Uploading files to the Ouinet client...", file=sys.stderr)
-        seed_files(args.directory, args.client_proxy)
 
     if 'inject' in args.action:
         print("Requesting content via the Ouinet client...", file=sys.stderr)
@@ -233,6 +229,10 @@ def main():
     if 'desc' in args.action:
         print("Fetching URI descriptors via the Ouinet client...", file=sys.stderr)
         fetch_descs(args.directory, args.uri_prefix, args.client_proxy)
+
+    if 'seed' in args.action:
+        print("Uploading files to the Ouinet client...", file=sys.stderr)
+        seed_files(args.directory, args.client_proxy)
 
 if __name__ == '__main__':
     main()

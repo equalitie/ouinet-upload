@@ -8,6 +8,7 @@ import json
 import os
 import re
 import sys
+import urllib.parse
 import urllib.request
 
 
@@ -36,7 +37,10 @@ INDEX_TAIL="""\
 </body>
 """
 
+DATA_DIR_NAME = '.ouinet'
+
 API_UPLOAD_EP = 'http://localhost/api/upload'
+API_DESC_EP = 'http://localhost/api/descriptor'
 
 
 def gen_index(iname, dname, dirnames, filenames):
@@ -47,12 +51,16 @@ def gen_index(iname, dname, dirnames, filenames):
 
     Links to parent and children point straight to the index file called
     `iname` in them.
+
+    The Ouinet data directory is excluded from the listing.
     """
     q = html.escape
     rh = INDEX_HEAD % (q(dname),)
     rup = INDEX_UP_ITEM % (q(iname),)
-    rdl = ''.join(INDEX_DIR_ITEM % (q('%s/%s' % (dn, iname)), q(dn)) for dn in dirnames)
-    rfl = ''.join(INDEX_FILE_ITEM % (q(fn), q(fn)) for fn in filenames if fn != iname)
+    rdl = ''.join(INDEX_DIR_ITEM % (q('%s/%s' % (dn, iname)), q(dn))
+                  for dn in dirnames if dn != DATA_DIR_NAME)
+    rfl = ''.join(INDEX_FILE_ITEM % (q(fn), q(fn))
+                  for fn in filenames if fn != iname)
     rt = INDEX_TAIL
     return ''.join([rh, rup, rdl, rfl, rt])
 
@@ -62,8 +70,12 @@ def generate_indexes(path, idxname, force=False):
     The index files are called as indicated in `idxname`.  `RuntimeError` is
     raised if an index file is found to exist.  This can be avoided by setting
     `force`, in which case it is overwritten.
+
+    Ouinet data directories are excluded from listings.
     """
     for (dirpath, dirnames, filenames) in os.walk(path):
+        if os.path.basename(dirpath) == DATA_DIR_NAME:
+            continue
         index_fn = os.path.join(dirpath, idxname)
         if not force and os.path.exists(index_fn):
             raise RuntimeError("refusing to overwrite existing index file: %s"
@@ -78,6 +90,8 @@ def seed_files(path, proxy):
 
     The client's HTTP proxy endpoint is given in `proxy` as a ``HOST:PORT``
     string.
+
+    Files in Ouinet data directories are also seeded.
     """
     proxy_handler = urllib.request.ProxyHandler({'http': 'http://' + proxy})
     url_opener = urllib.request.build_opener(proxy_handler)
@@ -104,6 +118,8 @@ def inject_uris(path, uri_prefix, proxy):
 
     The client's HTTP proxy endpoint is given in `proxy` as a ``HOST:PORT``
     string.
+
+    Ouinet data directories are excluded from injection.
     """
     if not _uri_rx.match(uri_prefix):
         raise ValueError("invalid URI prefix: " + uri_prefix)
@@ -115,6 +131,8 @@ def inject_uris(path, uri_prefix, proxy):
     buf = bytearray(4096)
 
     for (dirpath, dirnames, filenames) in os.walk(path):
+        if os.path.basename(dirpath) == DATA_DIR_NAME:
+            continue
         filenames.insert(0, '')  # also inject URI of directory itself
         for fn in filenames:
             path_tail = os.path.join(dirpath, fn)[path_prefix_len:]
@@ -124,6 +142,50 @@ def inject_uris(path, uri_prefix, proxy):
                 print('v', uri, file=sys.stderr)
                 while res.readinto(buf):  # consume body data
                     pass
+
+def fetch_descs(path, uri_prefix, proxy):
+    """Fetch URI descriptors for content under `path` via a Ouinet client.
+
+    URIs for the different items are built by prepending `uri_prefix` to their
+    path relative to the given `path`.
+
+    The client's HTTP proxy endpoint is given in `proxy` as a ``HOST:PORT``
+    string.
+
+    The descriptor for a given file is saved in a Ouinet data directory in the
+    file's directory.
+
+    Ouinet data directories are excluded from the process.
+    """
+    if not _uri_rx.match(uri_prefix):
+        raise ValueError("invalid URI prefix: " + uri_prefix)
+
+    path_prefix_len = len(path) + len(os.sep)  # to help remove path prefix
+    uri_prefix = uri_prefix.rstrip('/')  # remove trailing slashes
+    proxy_handler = urllib.request.ProxyHandler({'http': 'http://' + proxy})
+    url_opener = urllib.request.build_opener(proxy_handler)
+
+    for (dirpath, dirnames, filenames) in os.walk(path):
+        if os.path.basename(dirpath) == DATA_DIR_NAME:
+            continue
+        # Create a Ouinet data directory to hold descriptors.
+        descdir = os.path.join(dirpath, DATA_DIR_NAME)
+        try:
+            os.mkdir(descdir)
+        except FileExistsError:
+            pass
+        filenames.insert(0, '')  # also fetch descriptor of directory itself
+        for fn in filenames:
+            path_tail = os.path.join(dirpath, fn)[path_prefix_len:]
+            uri_tail = path_tail.replace(os.sep, '/')
+            uri = uri_prefix + '/' + uri_tail
+            api_uri = '%s?uri=%s' % (API_DESC_EP, urllib.parse.quote(uri))
+            with url_opener.open(api_uri) as res:
+                desc = res.read()
+            descpath = os.path.join(descdir, fn + '.json')
+            with open(descpath, 'wb') as descf:
+                print('>', uri, file=sys.stderr)
+                descf.write(desc)
 
 def main():
     parser = argparse.ArgumentParser(
@@ -148,11 +210,12 @@ def main():
         'directory', metavar="DIR", type=os.path.normpath,
         help="the content directory to prepare and publish")
     parser.add_argument(
-        'action', metavar='ACTION', nargs='+', choices='index seed inject'.split(),
+        'action', metavar='ACTION', nargs='+', choices='index seed inject desc'.split(),
         help=("actions to perform:"
               " 'index' creates per-directory index files,"
               " 'seed' uploads files to the Ouinet client for it to seed their data,"
-              " 'inject' requests content via the Ouinet client to inject it"))
+              " 'inject' requests content via the Ouinet client to inject it,"
+              " 'desc' fetches URI descriptors via the Ouinet client and stores them beside content"))
     args = parser.parse_args()
 
     if 'index' in args.action:
@@ -166,6 +229,10 @@ def main():
     if 'inject' in args.action:
         print("Requesting content via the Ouinet client...", file=sys.stderr)
         inject_uris(args.directory, args.uri_prefix, args.client_proxy)
+
+    if 'desc' in args.action:
+        print("Fetching URI descriptors via the Ouinet client...", file=sys.stderr)
+        fetch_descs(args.directory, args.uri_prefix, args.client_proxy)
 
 if __name__ == '__main__':
     main()

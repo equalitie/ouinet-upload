@@ -26,6 +26,14 @@ Where ``CONTENT_DIR`` is the path to the directory holding content.
     Please note that content must be made available to the relevant injectors
     (e.g. via HTTP) to allow this action.
 
+  - ``desc`` fetches URI descriptors for all files and directories in the
+    content directory via the Ouinet client and stores them beside content (in
+    separate ``.ouinet`` data directories).  This requires that content has
+    been previously injected (see above).
+
+    Circulating these additional files (e.g. by seeding them, see below) may
+    help other Ouinet users look up content URIs on the distributed cache.
+
   - ``seed`` uploads all files in the content directory to the local Ouinet
     client (assumed by default to be listening on ``localhost:8080``) so that
     it seeds their data to the distributed cache.
@@ -55,7 +63,10 @@ If you invoked the ``inject`` action, your Ouinet client should be seeding the
 content itself.  You can also help seed the content at any other moment (even
 if you did not run ``inject``) by uploading files to your Ouinet client:
 
+    $ upload --uri-prefix https://example.com root desc  # optional
     $ upload root seed  # to start seeding content data to the cache
+
+The first command further helps other Ouinet users locate content from URIs.
 
 --------
 

@@ -36,7 +36,7 @@ INDEX_TAIL="""\
 </body>
 """
 
-API_UPLOAD_EP = 'http://localhost/upload'
+API_UPLOAD_EP = 'http://localhost/api/upload'
 
 
 def gen_index(iname, dname, dirnames, filenames):

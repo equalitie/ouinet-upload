@@ -19,19 +19,19 @@ Where ``CONTENT_DIR`` is the path to the directory holding content.
     (including itself) contains the name of the directory, a link to its
     parent, and links to files and index files in directories under it.
 
-  - ``seed`` uploads all files in the content directory to the local Ouinet
-    client (assumed by default to be listening on ``localhost:8080``) so that
-    it seeds their data to the distributed cache.
-
-    Use this if you want your Ouinet client to cooperate in seeding the
-    content data to the distributed cache.
-
   - ``inject`` requests all files and directories in the content directory via
     the local Ouinet client (assumed by default to be listening on
     ``localhost:8080``) so that it requests their injection.
 
     Please note that content must be made available to the relevant injectors
     (e.g. via HTTP) to allow this action.
+
+  - ``seed`` uploads all files in the content directory to the local Ouinet
+    client (assumed by default to be listening on ``localhost:8080``) so that
+    it seeds their data to the distributed cache.
+
+    Use this if you want your Ouinet client to cooperate in seeding the
+    content data to the distributed cache.
 
 Usage example (with the Ouinet client listening at ``localhost:8087``):
 
@@ -40,10 +40,9 @@ Usage example (with the Ouinet client listening at ``localhost:8087``):
     $ ls
     root/
     $ upload root index  # if there were no index files
-    $ upload root seed  # to start seeding content data to the cache
 
-At this point you may want to tell a Web server to publish the `root`
-directory.  Let us assume that the content is published at
+At this point you may want to tell a Web server to publish the contents of the
+``root`` directory.  Let us assume that the content is published at
 ``https://example.com/``.
 
     $ upload --uri-prefix https://example.com root inject
@@ -51,6 +50,12 @@ directory.  Let us assume that the content is published at
 After that, clients should be able to both look up content URIs and retrieve
 content data from the distributed cache, so the content should be fully
 browseable using only the distributed cache.
+
+If you invoked the ``inject`` action, your Ouinet client should be seeding the
+content itself.  You can also help seed the content at any other moment (even
+if you did not run ``inject``) by uploading files to your Ouinet client:
+
+    $ upload root seed  # to start seeding content data to the cache
 
 --------
 

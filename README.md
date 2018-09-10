@@ -50,8 +50,9 @@ Usage example (with the Ouinet client listening at ``localhost:8087``):
     $ upload root index  # if there were no index files
 
 At this point you may want to tell a Web server to publish the contents of the
-``root`` directory.  Let us assume that the content is published at
-``https://example.com/``.
+``root`` directory (you can find a sample configuration file for the NginX web
+server [here](./docs/nginx-vhost.conf)).  Let us assume that the content is
+published at ``https://example.com/``:
 
     $ upload --uri-prefix https://example.com root inject
 

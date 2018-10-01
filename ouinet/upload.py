@@ -3,6 +3,7 @@
 """
 
 import argparse
+import base64
 import html
 import json
 import os
@@ -10,6 +11,7 @@ import re
 import sys
 import urllib.parse
 import urllib.request
+import zlib
 
 
 # Defaults for command line options.
@@ -119,6 +121,9 @@ def inject_uris(path, uri_prefix, proxy):
     The client's HTTP proxy endpoint is given in `proxy` as a ``HOST:PORT``
     string.
 
+    The descriptor resulting from injecting a given file is saved in a Ouinet
+    data directory in the file's directory.
+
     Ouinet data directories are excluded from injection.
     """
     if not _uri_rx.match(uri_prefix):
@@ -131,41 +136,7 @@ def inject_uris(path, uri_prefix, proxy):
     buf = bytearray(4096)
 
     for (dirpath, dirnames, filenames) in os.walk(path):
-        if os.path.basename(dirpath) == DATA_DIR_NAME:
-            continue
-        filenames.insert(0, '')  # also inject URI of directory itself
-        for fn in filenames:
-            path_tail = os.path.join(dirpath, fn)[path_prefix_len:]
-            uri_tail = path_tail.replace(os.sep, '/')
-            uri = uri_prefix + '/' + uri_tail
-            with url_opener.open(uri) as res:
-                print('v', uri, file=sys.stderr)
-                while res.readinto(buf):  # consume body data
-                    pass
-
-def fetch_descs(path, uri_prefix, proxy):
-    """Fetch URI descriptors for content under `path` via a Ouinet client.
-
-    URIs for the different items are built by prepending `uri_prefix` to their
-    path relative to the given `path`.
-
-    The client's HTTP proxy endpoint is given in `proxy` as a ``HOST:PORT``
-    string.
-
-    The descriptor for a given file is saved in a Ouinet data directory in the
-    file's directory.
-
-    Ouinet data directories are excluded from the process.
-    """
-    if not _uri_rx.match(uri_prefix):
-        raise ValueError("invalid URI prefix: " + uri_prefix)
-
-    path_prefix_len = len(path) + len(os.sep)  # to help remove path prefix
-    uri_prefix = uri_prefix.rstrip('/')  # remove trailing slashes
-    proxy_handler = urllib.request.ProxyHandler({'http': 'http://' + proxy})
-    url_opener = urllib.request.build_opener(proxy_handler)
-
-    for (dirpath, dirnames, filenames) in os.walk(path):
+        # Avoid Ouinet data directory.
         if os.path.basename(dirpath) == DATA_DIR_NAME:
             continue
         # Create a Ouinet data directory to hold descriptors.
@@ -174,14 +145,26 @@ def fetch_descs(path, uri_prefix, proxy):
             os.mkdir(descdir)
         except FileExistsError:
             pass
-        filenames.insert(0, '')  # also fetch descriptor of directory itself
+
+        filenames.insert(0, '')  # also inject URI of directory itself
         for fn in filenames:
+            # Build target URI and request.
             path_tail = os.path.join(dirpath, fn)[path_prefix_len:]
             uri_tail = path_tail.replace(os.sep, '/')
             uri = uri_prefix + '/' + uri_tail
-            api_uri = '%s?uri=%s' % (API_DESC_EP, urllib.parse.quote(uri))
-            with url_opener.open(api_uri) as res:
-                desc = res.read()
+            req = urllib.request.Request(
+                # Perform synchronous injection to get the descriptor.
+                uri, headers={'X-Ouinet-Sync': 'true'})
+            # Send the request to perform the injection.
+            with url_opener.open(req) as res:
+                print('v', uri, file=sys.stderr)
+                desc = res.headers['X-Ouinet-Descriptor']
+                while res.readinto(buf):  # consume body data
+                    pass
+            if not desc:
+                raise RuntimeError("URI was not injected: %s" % uri)
+            # Save the descriptor resulting from the injection.
+            desc = zlib.decompress(base64.b64decode(desc))
             descpath = os.path.join(descdir, fn + '.json')
             with open(descpath, 'wb') as descf:
                 print('>', uri, file=sys.stderr)
@@ -210,11 +193,10 @@ def main():
         'directory', metavar="DIR", type=os.path.normpath,
         help="the content directory to prepare and publish")
     parser.add_argument(
-        'action', metavar='ACTION', nargs='+', choices='index inject desc seed'.split(),
+        'action', metavar='ACTION', nargs='+', choices='index inject seed'.split(),
         help=("actions to perform:"
               " 'index' creates per-directory index files,"
-              " 'inject' requests content via the Ouinet client to inject it,"
-              " 'desc' fetches URI descriptors via the Ouinet client and stores them beside content,"
+              " 'inject' requests content via the Ouinet client to inject it and stores descriptors beside content,"
               " 'seed' uploads files to the Ouinet client for it to seed their data"))
     args = parser.parse_args()
 
@@ -225,10 +207,6 @@ def main():
     if 'inject' in args.action:
         print("Requesting content via the Ouinet client...", file=sys.stderr)
         inject_uris(args.directory, args.uri_prefix, args.client_proxy)
-
-    if 'desc' in args.action:
-        print("Fetching URI descriptors via the Ouinet client...", file=sys.stderr)
-        fetch_descs(args.directory, args.uri_prefix, args.client_proxy)
 
     if 'seed' in args.action:
         print("Uploading files to the Ouinet client...", file=sys.stderr)

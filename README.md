@@ -48,8 +48,11 @@ Usage example (with the Ouinet client listening at ``localhost:8087``):
 
 At this point you may want to tell a Web server to publish the contents of the
 ``root`` directory (you can find a sample configuration file for the NginX web
-server [here](./docs/nginx-vhost.conf)).  Let us assume that the content is
-published at ``https://example.com/``:
+server [here](./docs/nginx-vhost.conf)).  You may also want to configure your
+client to only attempt access to that server using the Injector request
+mechanism (e.g. by disabling the Origin, Proxy and Cache mechanisms at the
+client's front end page).  Let us assume that the content is published at
+``https://example.com/``:
 
     $ upload --uri-prefix https://example.com root inject
 
@@ -57,11 +60,14 @@ After that, clients should be able to both look up content URIs and retrieve
 content data from the distributed cache, so the content should be fully
 browseable using only the distributed cache.
 
-If you invoked the ``inject`` action, your Ouinet client should be seeding the
-content itself.  You can also help seed the content at any other moment (even
-if you did not run ``inject``) by uploading files to your Ouinet client:
+To have your client itself seed the content and the descriptors (whether you
+run ``inject`` or not), you can upload the files to your Ouinet client:
 
     $ upload root seed  # to start seeding content data to the cache
+
+You may need to first enable the Cache mechanism at the client (e.g. at its
+front end page).  Please note that at the moment this does not seed the
+URL-to-descriptor mappings to distributed data bases.
 
 --------
 

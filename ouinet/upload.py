@@ -164,18 +164,18 @@ def inject_uris(path, uri_prefix, proxy):
                     pass
             if not desc:
                 raise RuntimeError("URI was not injected: %s" % uri)
+
+            def save_descf(data, ext, log):
+                path = os.path.join(descdir, fn + '.' + ext)
+                with open(path, 'wb') as f:
+                    print(log, file=sys.stderr, end='')
+                    f.write(data)
             # Save the descriptor resulting from the injection.
             desc = zlib.decompress(base64.b64decode(desc))
-            descpath = os.path.join(descdir, fn + '.json')
-            with open(descpath, 'wb') as descf:
-                print('>', uri, file=sys.stderr, end='')
-                descf.write(desc)
+            save_descf(desc, 'json', '> ' + uri)
             # Save the descriptor storage link.
             dlnk = dlnk.encode('utf-8')  # though probably ASCII
-            dlnkpath = os.path.join(descdir, fn + '.link')
-            with open(dlnkpath, 'wb') as dlnkf:
-                print(" +LINK", file=sys.stderr, end='')
-                dlnkf.write(dlnk)
+            save_descf(dlnk, 'link', ' +LINK')
             print('', file=sys.stderr)
 
 def main():

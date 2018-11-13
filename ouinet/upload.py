@@ -121,8 +121,8 @@ def inject_uris(path, uri_prefix, proxy):
     The client's HTTP proxy endpoint is given in `proxy` as a ``HOST:PORT``
     string.
 
-    The descriptor resulting from injecting a given file is saved in a Ouinet
-    data directory in the file's directory.
+    The descriptor (and its storage link) resulting from injecting a given
+    file is saved in a Ouinet data directory in the file's directory.
 
     Ouinet data directories are excluded from injection.
     """
@@ -159,6 +159,7 @@ def inject_uris(path, uri_prefix, proxy):
             with url_opener.open(req) as res:
                 print('v', uri, file=sys.stderr)
                 desc = res.headers['X-Ouinet-Descriptor']
+                dlnk = res.headers['X-Ouinet-Descriptor-Link']
                 while res.readinto(buf):  # consume body data
                     pass
             if not desc:
@@ -167,8 +168,15 @@ def inject_uris(path, uri_prefix, proxy):
             desc = zlib.decompress(base64.b64decode(desc))
             descpath = os.path.join(descdir, fn + '.json')
             with open(descpath, 'wb') as descf:
-                print('>', uri, file=sys.stderr)
+                print('>', uri, file=sys.stderr, end='')
                 descf.write(desc)
+            # Save the descriptor storage link.
+            dlnk = dlnk.encode('utf-8')  # though probably ASCII
+            dlnkpath = os.path.join(descdir, fn + '.link')
+            with open(dlnkpath, 'wb') as dlnkf:
+                print(" +LINK", file=sys.stderr, end='')
+                dlnkf.write(dlnk)
+            print('', file=sys.stderr)
 
 def main():
     parser = argparse.ArgumentParser(

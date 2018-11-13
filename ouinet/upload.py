@@ -111,6 +111,7 @@ def seed_files(path, proxy):
                     print('^', fpath, ':', ' '.join(msg['data_links']), file=sys.stderr)
 
 _uri_rx = re.compile(r'^[a-z][\+\-\.-0-9a-z]+:')
+_ins_hdr_rx = re.compile(r'^X-Ouinet-Insert-(?P<db>.*)', re.IGNORECASE)
 
 def inject_uris(path, uri_prefix, proxy):
     """Request content under `path` via a Ouinet client to inject it.
@@ -122,7 +123,8 @@ def inject_uris(path, uri_prefix, proxy):
     string.
 
     The descriptor (and its storage link) resulting from injecting a given
-    file is saved in a Ouinet data directory in the file's directory.
+    file is saved in a Ouinet data directory in the file's directory, along
+    with any data base-dependent insertion data.
 
     Ouinet data directories are excluded from injection.
     """
@@ -156,13 +158,21 @@ def inject_uris(path, uri_prefix, proxy):
                 # Perform synchronous injection to get the descriptor.
                 uri, headers={'X-Ouinet-Sync': 'true'})
             # Send the request to perform the injection.
+            inj = dict(desc=None, dlnk=None, insdata={})
             with url_opener.open(req) as res:
                 print('v', uri, file=sys.stderr)
-                desc = res.headers['X-Ouinet-Descriptor']
-                dlnk = res.headers['X-Ouinet-Descriptor-Link']
+                # Capture injection headers from the response.
+                for (h, v) in res.headers.items():
+                    if h == 'X-Ouinet-Descriptor':
+                        inj['desc'] = v
+                    elif h == 'X-Ouinet-Descriptor-Link':
+                        inj['dlnk'] = v
+                    elif _ins_hdr_rx.match(h):
+                        db = _ins_hdr_rx.match(h).group('db')
+                        inj['insdata'][db] = v
                 while res.readinto(buf):  # consume body data
                     pass
-            if not desc:
+            if not inj['desc']:
                 raise RuntimeError("URI was not injected: %s" % uri)
 
             def save_descf(data, ext, log):
@@ -171,11 +181,15 @@ def inject_uris(path, uri_prefix, proxy):
                     print(log, file=sys.stderr, end='')
                     f.write(data)
             # Save the descriptor resulting from the injection.
-            desc = zlib.decompress(base64.b64decode(desc))
+            desc = zlib.decompress(base64.b64decode(inj['desc']))
             save_descf(desc, 'json', '> ' + uri)
             # Save the descriptor storage link.
-            dlnk = dlnk.encode('utf-8')  # though probably ASCII
+            dlnk = inj['dlnk'].encode('utf-8')  # though probably ASCII
             save_descf(dlnk, 'link', ' +LINK')
+            # Save any db-dependent insertion data.
+            for (db, insd) in inj['insdata'].items():
+                insd = base64.b64decode(insd)
+                save_descf(insd, 'ins-' + db.lower(), ' +' + db.upper())
             print('', file=sys.stderr)
 
 def main():

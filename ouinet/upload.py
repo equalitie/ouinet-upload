@@ -40,7 +40,7 @@ INDEX_TAIL="""\
 """
 
 DATA_DIR_NAME = '.ouinet'
-DESC_FILE_EXT = '.json'
+DESC_FILE_EXT = '.desc'
 LINK_FILE_EXT = '.link'
 
 API_UPLOAD_EP = 'http://localhost/api/upload'

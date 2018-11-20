@@ -195,7 +195,7 @@ def inject_uris(path, uri_prefix, proxy):
             # Save any db-dependent insertion data.
             for (db, insd) in inj['insdata'].items():
                 insd = base64.b64decode(insd)
-                save_descf(insd, 'ins-' + db.lower(), ' +' + db.upper())
+                save_descf(insd, '.ins-' + db.lower(), ' +' + db.upper())
             print('', file=sys.stderr)
 
 def main():

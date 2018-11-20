@@ -44,6 +44,7 @@ DESC_FILE_EXT = '.desc'
 LINK_FILE_EXT = '.link'
 
 API_UPLOAD_EP = 'http://localhost/api/upload'
+API_INSERT_EP_PFX = 'http://localhost/api/insert/'
 API_DESC_EP = 'http://localhost/api/descriptor'
 
 
@@ -89,6 +90,11 @@ def generate_indexes(path, idxname, force=False):
         with open(index_fn, 'w') as index_f:
             index_f.write(index)
 
+_insdata_ext_rx = re.compile(r'\.ins-(?P<db>[0-9a-z]+)$');
+_ctype_from_db = {
+    'bep44': 'application/x-bittorrent'
+}
+
 def seed_files(path, proxy):
     """Upload files under `path` to a Ouinet client for it to seed them.
 
@@ -104,17 +110,30 @@ def seed_files(path, proxy):
 
     for (dirpath, dirnames, filenames) in os.walk(path):
         for fn in filenames:
-            if os.path.basename(dirpath) == DATA_DIR_NAME and not fn.endswith(DESC_FILE_EXT):
-                continue  # unknown Ouinet data file
+            api_ep, ctype, insdb = API_UPLOAD_EP, 'application/octet-stream', None
+            # Identify Ouinet data files.
+            if os.path.basename(dirpath) == DATA_DIR_NAME:
+                ins = _insdata_ext_rx.search(fn)
+                if ins:  # insertion data
+                    insdb = ins.group('db')
+                    api_ep = API_INSERT_EP_PFX + insdb  # insert, not upload
+                    ctype = _ctype_from_db.get(insdb)  # db-specific type
+                    if not ctype:  # unknown db
+                        continue
+                elif not fn.endswith(DESC_FILE_EXT):  # descriptor
+                    continue  # unknown Ouinet data file
             fpath = os.path.join(dirpath, fn)
             fstat = os.stat(fpath)
             with open(fpath, 'rb') as f:  # binary matters!
-                req = urllib.request.Request(API_UPLOAD_EP, data=f)
-                req.add_header('Content-Type', 'application/octet-stream')
+                req = urllib.request.Request(api_ep, data=f )
+                req.add_header('Content-Type', ctype)
                 req.add_header('Content-Length', fstat.st_size)
                 with url_opener.open(req) as res:
                     msg = json.loads(res.read())
-                    print('^', fpath, ':', ' '.join(msg['data_links']), file=sys.stderr)
+                    if insdb:
+                        print('<', fpath, ':', insdb.upper() + '=' + msg['key'], file=sys.stderr)
+                    else:
+                        print('^', fpath, ':', ' '.join(msg['data_links']), file=sys.stderr)
 
 _uri_rx = re.compile(r'^[a-z][\+\-\.-0-9a-z]+:')
 _ins_hdr_rx = re.compile(r'^X-Ouinet-Insert-(?P<db>.*)', re.IGNORECASE)

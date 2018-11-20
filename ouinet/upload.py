@@ -93,13 +93,17 @@ def seed_files(path, proxy):
     The client's HTTP proxy endpoint is given in `proxy` as a ``HOST:PORT``
     string.
 
-    Files in Ouinet data directories are also seeded.
+    Files in Ouinet data directories are handled specially depending on their
+    purpose (e.g. descriptors are uploaded, insertion data is used to reinsert
+    mappings).
     """
     proxy_handler = urllib.request.ProxyHandler({'http': 'http://' + proxy})
     url_opener = urllib.request.build_opener(proxy_handler)
 
     for (dirpath, dirnames, filenames) in os.walk(path):
         for fn in filenames:
+            if os.path.basename(dirpath) == DATA_DIR_NAME and not fn.endswith('.json'):
+                continue  # unknown Ouinet data file
             fpath = os.path.join(dirpath, fn)
             fstat = os.stat(fpath)
             with open(fpath, 'rb') as f:  # binary matters!

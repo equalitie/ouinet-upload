@@ -33,7 +33,8 @@ Where ``CONTENT_DIR`` is the path to the directory holding content.
 
   - ``seed`` uploads all files in the content directory to the local Ouinet
     client (assumed by default to be listening on ``localhost:8080``) so that
-    it seeds their data to the distributed cache.
+    it seeds their data to the distributed cache.  Files in `.ouinet` data
+    directories are handled specially.
 
     Use this if you want your Ouinet client to cooperate in seeding the
     content data to the distributed cache.

@@ -40,6 +40,8 @@ INDEX_TAIL="""\
 """
 
 DATA_DIR_NAME = '.ouinet'
+DESC_FILE_EXT = '.json'
+LINK_FILE_EXT = '.link'
 
 API_UPLOAD_EP = 'http://localhost/api/upload'
 API_DESC_EP = 'http://localhost/api/descriptor'
@@ -102,7 +104,7 @@ def seed_files(path, proxy):
 
     for (dirpath, dirnames, filenames) in os.walk(path):
         for fn in filenames:
-            if os.path.basename(dirpath) == DATA_DIR_NAME and not fn.endswith('.json'):
+            if os.path.basename(dirpath) == DATA_DIR_NAME and not fn.endswith(DESC_FILE_EXT):
                 continue  # unknown Ouinet data file
             fpath = os.path.join(dirpath, fn)
             fstat = os.stat(fpath)
@@ -180,16 +182,16 @@ def inject_uris(path, uri_prefix, proxy):
                 raise RuntimeError("URI was not injected: %s" % uri)
 
             def save_descf(data, ext, log):
-                path = os.path.join(descdir, fn + '.' + ext)
+                path = os.path.join(descdir, fn + ext)
                 with open(path, 'wb') as f:
                     print(log, file=sys.stderr, end='')
                     f.write(data)
             # Save the descriptor resulting from the injection.
             desc = zlib.decompress(base64.b64decode(inj['desc']))
-            save_descf(desc, 'json', '> ' + uri)
+            save_descf(desc, DESC_FILE_EXT, '> ' + uri)
             # Save the descriptor storage link.
             dlnk = inj['dlnk'].encode('utf-8')  # though probably ASCII
-            save_descf(dlnk, 'link', ' +LINK')
+            save_descf(dlnk, LINK_FILE_EXT, ' +LINK')
             # Save any db-dependent insertion data.
             for (db, insd) in inj['insdata'].items():
                 insd = base64.b64decode(insd)

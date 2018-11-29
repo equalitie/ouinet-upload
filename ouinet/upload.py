@@ -9,6 +9,7 @@ import json
 import os
 import re
 import sys
+import urllib.error
 import urllib.parse
 import urllib.request
 import zlib
@@ -128,12 +129,23 @@ def seed_files(path, proxy):
                 req = urllib.request.Request(api_ep, data=f )
                 req.add_header('Content-Type', ctype)
                 req.add_header('Content-Length', fstat.st_size)
-                with url_opener.open(req) as res:
-                    msg = json.loads(res.read())
-                    if insdb:
-                        print('<', fpath, ':', insdb.upper() + '=' + msg['key'], file=sys.stderr)
+                print('<' if insdb else '^', fpath, ': ', file=sys.stderr, end='')
+                try:
+                    with url_opener.open(req) as res:
+                        msg = json.loads(res.read())
+                        if insdb:
+                            print(insdb.upper() + '=' + msg['key'], file=sys.stderr)
+                        else:
+                            print(' '.join(msg['data_links']), file=sys.stderr)
+                except urllib.error.HTTPError as he:
+                    try:
+                        errmsg = json.loads(he.read())['error']
+                    except Exception:
+                        print('ERROR="%s"' % he, file=sys.stderr)
                     else:
-                        print('^', fpath, ':', ' '.join(msg['data_links']), file=sys.stderr)
+                        print('ERROR="%s"' % errmsg, file=sys.stderr)
+                except Exception as e:
+                    print('ERROR="%s"' % e, file=sys.stderr)
 
 _uri_rx = re.compile(r'^[a-z][\+\-\.-0-9a-z]+:')
 _ins_hdr_rx = re.compile(r'^X-Ouinet-Insert-(?P<db>.*)', re.IGNORECASE)

@@ -193,21 +193,27 @@ def inject_uris(path, uri_prefix, proxy):
                 uri, headers={'X-Ouinet-Sync': 'true'})
             # Send the request to perform the injection.
             inj = dict(desc=None, dlnk=None, insdata={})
-            with url_opener.open(req) as res:
-                print('v', uri, file=sys.stderr)
-                # Capture injection headers from the response.
-                for (h, v) in res.headers.items():
-                    if h == 'X-Ouinet-Descriptor':
-                        inj['desc'] = v
-                    elif h == 'X-Ouinet-Descriptor-Link':
-                        inj['dlnk'] = v
-                    elif _ins_hdr_rx.match(h):
-                        db = _ins_hdr_rx.match(h).group('db')
-                        inj['insdata'][db] = v
-                while res.readinto(buf):  # consume body data
-                    pass
-            if not inj['desc']:
-                raise RuntimeError("URI was not injected: %s" % uri)
+            print('v', uri, file=sys.stderr, end='', flush=True)
+            try:
+                with url_opener.open(req) as res:
+                    # Capture injection headers from the response.
+                    for (h, v) in res.headers.items():
+                        if h == 'X-Ouinet-Descriptor':
+                            inj['desc'] = v
+                        elif h == 'X-Ouinet-Descriptor-Link':
+                            inj['dlnk'] = v
+                        elif _ins_hdr_rx.match(h):
+                            db = _ins_hdr_rx.match(h).group('db')
+                            inj['insdata'][db] = v
+                    while res.readinto(buf):  # consume body data
+                        pass
+            except Exception as e:
+                err = str(e)
+            else:
+                err = '' if inj['desc'] else "URI was not injected"
+            print(' ERROR="%s"' % err if err else '', file=sys.stderr)
+            if err:
+                continue
 
             def save_descf(data, ext, log):
                 path = os.path.join(descdir, fn + ext)

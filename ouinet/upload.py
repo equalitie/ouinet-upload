@@ -49,6 +49,12 @@ API_INSERT_EP_PFX = 'http://localhost/api/insert/'
 API_DESC_EP = 'http://localhost/api/descriptor'
 
 
+def _logline(*args):
+    print(*args, file=sys.stderr)
+
+def _logpart(*args):
+    print(*args, file=sys.stderr, end='', flush=True)
+
 def gen_index(iname, dname, dirnames, filenames):
     """Generate content of index file for a directory.
 
@@ -129,7 +135,7 @@ def seed_files(path, proxy):
                 req = urllib.request.Request(api_ep, data=f )
                 req.add_header('Content-Type', ctype)
                 req.add_header('Content-Length', fstat.st_size)
-                print('<' if insdb else '^', fpath, file=sys.stderr, end='', flush=True)
+                _logpart('<' if insdb else '^', fpath)
                 try:
                     with url_opener.open(req) as res:
                         msg = json.loads(res.read())
@@ -142,7 +148,7 @@ def seed_files(path, proxy):
                         logtail = 'ERROR="%s"' % he
                 except Exception as e:
                     logtail = 'ERROR="%s"' % e
-                print('', logtail, file=sys.stderr)
+                _logline('', logtail)
 
 _uri_rx = re.compile(r'^[a-z][\+\-\.-0-9a-z]+:')
 _ins_hdr_rx = re.compile(r'^X-Ouinet-Insert-(?P<db>.*)', re.IGNORECASE)
@@ -193,7 +199,7 @@ def inject_uris(path, uri_prefix, proxy):
                 uri, headers={'X-Ouinet-Sync': 'true'})
             # Send the request to perform the injection.
             inj = dict(desc=None, dlnk=None, insdata={})
-            print('v', uri, file=sys.stderr, end='', flush=True)
+            _logpart('v', uri)
             try:
                 with url_opener.open(req) as res:
                     # Capture injection headers from the response.
@@ -211,7 +217,7 @@ def inject_uris(path, uri_prefix, proxy):
                 err = str(e)
             else:
                 err = '' if inj['desc'] else "URI was not injected"
-            print(' ERROR="%s"' % err if err else '', file=sys.stderr)
+            _logline(' ERROR="%s"' % err if err else '')
             if err:
                 continue
 
@@ -219,14 +225,14 @@ def inject_uris(path, uri_prefix, proxy):
                 try:
                     data = transf(data)
                 except Exception:
-                    print(' -' + log, file=sys.stderr, end='', flush=True)
+                    _logpart(' -' + log)
                     return
                 path = os.path.join(descdir, fn + ext)
                 with open(path, 'wb') as f:
                     f.write(data)
-                print(' +' + log, file=sys.stderr, end='', flush=True)
+                _logpart(' +' + log)
 
-            print('>', uri, file=sys.stderr, end='', flush=True)
+            _logpart('>', uri)
             # Save the descriptor resulting from the injection.
             save_descf( inj.get('desc'),
                         (lambda x: zlib.decompress(base64.b64decode(x))),
@@ -239,7 +245,7 @@ def inject_uris(path, uri_prefix, proxy):
             for (db, insd) in inj['insdata'].items():
                 save_descf( insd, base64.b64decode,
                             '.ins-' + db.lower(), db.upper() )
-            print('', file=sys.stderr)
+            _logline('')
 
 def main():
     parser = argparse.ArgumentParser(
@@ -272,15 +278,15 @@ def main():
     args = parser.parse_args()
 
     if 'index' in args.action:
-        print("Creating index files...", file=sys.stderr)
+        _logline("Creating index files...")
         generate_indexes(args.directory, args.index_name, args.force_index)
 
     if 'inject' in args.action:
-        print("Requesting content via the Ouinet client...", file=sys.stderr)
+        _logline("Requesting content via the Ouinet client...")
         inject_uris(args.directory, args.uri_prefix, args.client_proxy)
 
     if 'seed' in args.action:
-        print("Uploading files to the Ouinet client...", file=sys.stderr)
+        _logline("Uploading files to the Ouinet client...")
         seed_files(args.directory, args.client_proxy)
 
 if __name__ == '__main__':

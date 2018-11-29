@@ -121,6 +121,7 @@ def seed_files(path, proxy):
     proxy_handler = urllib.request.ProxyHandler({'http': 'http://' + proxy})
     url_opener = urllib.request.build_opener(proxy_handler)
 
+    ok = True
     for (dirpath, dirnames, filenames) in os.walk(path):
         for fn in filenames:
             api_ep, ctype, insdb = API_UPLOAD_EP, 'application/octet-stream', None
@@ -148,14 +149,16 @@ def seed_files(path, proxy):
                         logtail = ( insdb.upper() + '=' + msg['key'] if insdb
                                     else ' '.join(msg['data_links']) )
                 except urllib.error.HTTPError as he:
+                    ok = False
                     try:  # attempt to extract API error string
                         logtail = 'ERROR="%s"' % json.loads(he.read())['error']
                     except Exception:
                         logtail = 'ERROR="%s"' % he
                 except Exception as e:
+                    ok = False
                     logtail = 'ERROR="%s"' % e
                 _logline('', logtail)
-    return True
+    return ok
 
 _uri_rx = re.compile(r'^[a-z][\+\-\.-0-9a-z]+:')
 _ins_hdr_rx = re.compile(r'^X-Ouinet-Insert-(?P<db>.*)', re.IGNORECASE)

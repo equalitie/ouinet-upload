@@ -190,6 +190,7 @@ def inject_uris(path, uri_prefix, proxy):
     url_opener = urllib.request.build_opener(proxy_handler)
     buf = bytearray(4096)
 
+    ok = True
     for (dirpath, dirnames, filenames) in os.walk(path):
         # Avoid Ouinet data directory.
         if os.path.basename(dirpath) == DATA_DIR_NAME:
@@ -232,12 +233,15 @@ def inject_uris(path, uri_prefix, proxy):
                 err = '' if inj['desc'] else "URI was not injected"
             _logline(' ERROR="%s"' % err if err else '')
             if err:
+                ok = False
                 continue
 
             def save_descf(data, transf, ext, log):
+                nonlocal ok
                 try:
                     data = transf(data)
                 except Exception:
+                    ok = False
                     _logpart(' -' + log)
                     return
                 path = os.path.join(descdir, fn + ext)
@@ -259,7 +263,7 @@ def inject_uris(path, uri_prefix, proxy):
                 save_descf( insd, base64.b64decode,
                             '.ins-' + db.lower(), db.upper() )
             _logline('')
-    return True
+    return ok
 
 def main():
     parser = argparse.ArgumentParser(

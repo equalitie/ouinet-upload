@@ -218,18 +218,19 @@ def inject_uris(path, uri_prefix, proxy):
             def save_descf(data, ext, log):
                 path = os.path.join(descdir, fn + ext)
                 with open(path, 'wb') as f:
-                    print(log, file=sys.stderr, end='')
+                    print(' +' + log, file=sys.stderr, end='', flush=True)
                     f.write(data)
+            print('>', uri, file=sys.stderr, end='', flush=True)
             # Save the descriptor resulting from the injection.
             desc = zlib.decompress(base64.b64decode(inj['desc']))
-            save_descf(desc, DESC_FILE_EXT, '> ' + uri)
+            save_descf(desc, DESC_FILE_EXT, 'DESC')
             # Save the descriptor storage link.
             dlnk = inj['dlnk'].encode('utf-8')  # though probably ASCII
-            save_descf(dlnk, LINK_FILE_EXT, ' +LINK')
+            save_descf(dlnk, LINK_FILE_EXT, 'LINK')
             # Save any db-dependent insertion data.
             for (db, insd) in inj['insdata'].items():
                 insd = base64.b64decode(insd)
-                save_descf(insd, '.ins-' + db.lower(), ' +' + db.upper())
+                save_descf(insd, '.ins-' + db.lower(), db.upper())
             print('', file=sys.stderr)
 
 def main():

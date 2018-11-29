@@ -84,6 +84,8 @@ def generate_indexes(path, idxname, force=False):
     `force`, in which case it is overwritten.
 
     Ouinet data directories are excluded from listings.
+
+    Return whether non-fatal errors happened.
     """
     for (dirpath, dirnames, filenames) in os.walk(path):
         if os.path.basename(dirpath) == DATA_DIR_NAME:
@@ -96,6 +98,7 @@ def generate_indexes(path, idxname, force=False):
                           os.path.basename(dirpath), dirnames, filenames)
         with open(index_fn, 'w') as index_f:
             index_f.write(index)
+    return True
 
 _insdata_ext_rx = re.compile(r'\.ins-(?P<db>[0-9a-z]+)$');
 _ctype_from_db = {
@@ -111,6 +114,9 @@ def seed_files(path, proxy):
     Files in Ouinet data directories are handled specially depending on their
     purpose (e.g. descriptors are uploaded, insertion data is used to reinsert
     mappings).
+
+    Return whether non-fatal errors happened (e.g. there was a problem when
+    seeding a file).
     """
     proxy_handler = urllib.request.ProxyHandler({'http': 'http://' + proxy})
     url_opener = urllib.request.build_opener(proxy_handler)
@@ -149,6 +155,7 @@ def seed_files(path, proxy):
                 except Exception as e:
                     logtail = 'ERROR="%s"' % e
                 _logline('', logtail)
+    return True
 
 _uri_rx = re.compile(r'^[a-z][\+\-\.-0-9a-z]+:')
 _ins_hdr_rx = re.compile(r'^X-Ouinet-Insert-(?P<db>.*)', re.IGNORECASE)
@@ -167,6 +174,9 @@ def inject_uris(path, uri_prefix, proxy):
     with any data base-dependent insertion data.
 
     Ouinet data directories are excluded from injection.
+
+    Return whether non-fatal errors happened (e.g. a URI failed to be
+    injected, or a descriptor or insertion data failed to be retrieved).
     """
     if not _uri_rx.match(uri_prefix):
         raise ValueError("invalid URI prefix: " + uri_prefix)
@@ -246,6 +256,7 @@ def inject_uris(path, uri_prefix, proxy):
                 save_descf( insd, base64.b64decode,
                             '.ins-' + db.lower(), db.upper() )
             _logline('')
+    return True
 
 def main():
     parser = argparse.ArgumentParser(
@@ -277,17 +288,21 @@ def main():
               " 'seed' uploads files to the Ouinet client for it to seed their data"))
     args = parser.parse_args()
 
+    ok = True
+
     if 'index' in args.action:
         _logline("Creating index files...")
-        generate_indexes(args.directory, args.index_name, args.force_index)
+        ok = ok and generate_indexes(args.directory, args.index_name, args.force_index)
 
     if 'inject' in args.action:
         _logline("Requesting content via the Ouinet client...")
-        inject_uris(args.directory, args.uri_prefix, args.client_proxy)
+        ok = ok and inject_uris(args.directory, args.uri_prefix, args.client_proxy)
 
     if 'seed' in args.action:
         _logline("Uploading files to the Ouinet client...")
-        seed_files(args.directory, args.client_proxy)
+        ok = ok and seed_files(args.directory, args.client_proxy)
+
+    return 0 if ok else 2
 
 if __name__ == '__main__':
-    main()
+    sys.exit(main())

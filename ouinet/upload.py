@@ -133,19 +133,16 @@ def seed_files(path, proxy):
                 try:
                     with url_opener.open(req) as res:
                         msg = json.loads(res.read())
-                        if insdb:
-                            print(insdb.upper() + '=' + msg['key'], file=sys.stderr)
-                        else:
-                            print(' '.join(msg['data_links']), file=sys.stderr)
+                        logtail = ( insdb.upper() + '=' + msg['key'] if insdb
+                                    else ' '.join(msg['data_links']) )
                 except urllib.error.HTTPError as he:
-                    try:
-                        errmsg = json.loads(he.read())['error']
+                    try:  # attempt to extract API error string
+                        logtail = 'ERROR="%s"' % json.loads(he.read())['error']
                     except Exception:
-                        print('ERROR="%s"' % he, file=sys.stderr)
-                    else:
-                        print('ERROR="%s"' % errmsg, file=sys.stderr)
+                        logtail = 'ERROR="%s"' % he
                 except Exception as e:
-                    print('ERROR="%s"' % e, file=sys.stderr)
+                    logtail = 'ERROR="%s"' % e
+                print(logtail, file=sys.stderr)
 
 _uri_rx = re.compile(r'^[a-z][\+\-\.-0-9a-z]+:')
 _ins_hdr_rx = re.compile(r'^X-Ouinet-Insert-(?P<db>.*)', re.IGNORECASE)

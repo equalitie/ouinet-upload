@@ -46,37 +46,47 @@ Where ``CONTENT_DIR`` is the path to the directory holding content.
     cooperate in seeding the content data to the distributed cache when
     injectors are not reachable.
 
-Usage example (with the Ouinet client listening at ``localhost:8087``):
+## Usage examples
+
+These examples assume a Ouinet client listening at ``localhost:8087``:
 
     $ alias upload="python3 -m ouinet.upload --client-proxy localhost:8087"
+
+### Content provider
+
+First, make sure that your client only requests content using the Injector
+mechanism.  You may either disable the Origin, Proxy and Cache request
+mechanisms at the client's front end page, or you may add the options
+``--disable-origin-access`` and ``--disable-proxy-access`` to the client's
+command line.
+
+Enter the directory holding the content directory, and create index files if
+they are missing:
+
     $ cd /path/to/content
     $ ls
     root/
-    $ upload root index  # if there were no index files
+    $ upload root index
 
 At this point you may want to tell a Web server to publish the contents of the
-``root`` directory (you can find a sample configuration file for the NginX web
-server [here](./docs/nginx-vhost.conf)).  You may also want to configure your
-client to only attempt access to that server using the Injector request
-mechanism (e.g. by disabling the Origin, Proxy and Cache mechanisms at the
-client's front end page, or by adding the options ``--disable-origin-access``
-and ``--disable-proxy-access`` to the client's command line).  Let us assume
+``root`` directory or a replica of it.  You can find a sample configuration
+file for the NginX web server [here](./docs/nginx-vhost.conf).  Let us assume
 that the content is published at ``https://example.com/``:
 
     $ upload --uri-prefix https://example.com root inject
 
 After that, clients should be able to both look up content URIs and retrieve
-content data from the distributed cache, so the content should be fully
-browseable using only the distributed cache.
+content data from the distributed cache to browse it, even if the web server
+is no longer reachable.
 
-To have your client itself seed the content and the descriptors (whether you
-run ``inject`` or not), you can upload the files to your Ouinet client:
+### Users
 
-    $ upload root seed  # to start seeding content data to the cache
+To have your client itself seed the content, descriptors and URL-to-descriptor
+mappings, you can upload the files to your Ouinet client:
 
-You may need to first enable the Cache mechanism at the client (e.g. at its
-front end page).  Please note that at the moment this does not seed the
-URL-to-descriptor mappings to distributed data bases.
+    $ upload root seed
+
+Please note that the Cache request mechanism should be enabled at the client.
 
 --------
 

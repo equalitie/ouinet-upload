@@ -129,7 +129,7 @@ def seed_files(path, proxy):
                 req = urllib.request.Request(api_ep, data=f )
                 req.add_header('Content-Type', ctype)
                 req.add_header('Content-Length', fstat.st_size)
-                print('<' if insdb else '^', fpath, ': ', file=sys.stderr, end='')
+                print('<' if insdb else '^', fpath, file=sys.stderr, end='', flush=True)
                 try:
                     with url_opener.open(req) as res:
                         msg = json.loads(res.read())
@@ -142,7 +142,7 @@ def seed_files(path, proxy):
                         logtail = 'ERROR="%s"' % he
                 except Exception as e:
                     logtail = 'ERROR="%s"' % e
-                print(logtail, file=sys.stderr)
+                print('', logtail, file=sys.stderr)
 
 _uri_rx = re.compile(r'^[a-z][\+\-\.-0-9a-z]+:')
 _ins_hdr_rx = re.compile(r'^X-Ouinet-Insert-(?P<db>.*)', re.IGNORECASE)

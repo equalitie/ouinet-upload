@@ -52,8 +52,9 @@ At this point you may want to tell a Web server to publish the contents of the
 server [here](./docs/nginx-vhost.conf)).  You may also want to configure your
 client to only attempt access to that server using the Injector request
 mechanism (e.g. by disabling the Origin, Proxy and Cache mechanisms at the
-client's front end page).  Let us assume that the content is published at
-``https://example.com/``:
+client's front end page, or by adding the options ``--disable-origin-access``
+and ``--disable-proxy-access`` to the client's command line).  Let us assume
+that the content is published at ``https://example.com/``:
 
     $ upload --uri-prefix https://example.com root inject
 

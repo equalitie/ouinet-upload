@@ -126,7 +126,7 @@ def seed_files(path, proxy):
         for fn in filenames:
             api_ep, ctype, insdb = API_UPLOAD_EP, 'application/octet-stream', None
             # Identify Ouinet data files.
-            if os.path.basename(dirpath) == DATA_DIR_NAME:
+            if DATA_DIR_NAME in dirpath.split(os.path.sep):
                 ins = _insdata_ext_rx.search(fn)
                 if ins:  # insertion data
                     insdb = ins.group('db')

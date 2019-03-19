@@ -7,8 +7,10 @@ import base64
 import html
 import json
 import os
+import queue
 import re
 import sys
+import threading
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -115,50 +117,93 @@ def seed_files(path, proxy):
     purpose (e.g. descriptors are uploaded, insertion data is used to reinsert
     mappings).
 
+    Several uploads are done concurrently to compensate delays in seeding
+    files and mappings.
+
     Return whether non-fatal errors happened (e.g. there was a problem when
     seeding a file).
     """
     proxy_handler = urllib.request.ProxyHandler({'http': 'http://' + proxy})
     url_opener = urllib.request.build_opener(proxy_handler)
 
-    ok = True
-    for (dirpath, dirnames, filenames) in os.walk(path):
-        for fn in filenames:
-            api_ep, ctype, insdb = API_UPLOAD_EP, 'application/octet-stream', None
-            # Identify Ouinet data files.
-            if DATA_DIR_NAME in dirpath.split(os.path.sep):
-                ins = _insdata_ext_rx.search(fn)
-                if ins:  # insertion data
-                    insdb = ins.group('db')
-                    api_ep = API_INSERT_EP_PFX + insdb  # insert, not upload
-                    ctype = _ctype_from_db.get(insdb)  # db-specific type
-                    if not ctype:  # unknown db
-                        continue
-                elif not fn.endswith(DESC_FILE_EXT):  # descriptor
-                    continue  # unknown Ouinet data file
-            fpath = os.path.join(dirpath, fn)
-            fstat = os.stat(fpath)
-            with open(fpath, 'rb') as f:  # binary matters!
-                req = urllib.request.Request(api_ep, data=f )
-                req.add_header('Content-Type', ctype)
-                req.add_header('Content-Length', fstat.st_size)
-                _logpart('<' if insdb else '^', fpath)
+    tasks = queue.Queue()  # (api_ep, ctype, fpath, insdb)
+    results = queue.Queue()  # (ok, log_line)
+    done = threading.Event()
+
+    class SeederThread(threading.Thread):
+        def run(self):
+            while not done.is_set():
                 try:
-                    with url_opener.open(req) as res:
-                        msg = json.loads(res.read())
-                        logtail = ( insdb.upper() + '=' + msg['key'] if insdb
-                                    else ' '.join(msg['data_links']) )
-                except urllib.error.HTTPError as he:
-                    ok = False
-                    try:  # attempt to extract API error string
-                        logtail = 'ERROR="%s"' % json.loads(he.read())['error']
-                    except Exception:
-                        logtail = 'ERROR="%s"' % he
-                except Exception as e:
-                    ok = False
-                    logtail = 'ERROR="%s"' % e
-                _logline('', logtail)
-    return ok
+                    (api_ep, ctype, fpath, insdb) = tasks.get(timeout=1)
+                except queue.Empty:
+                    continue
+                fstat = os.stat(fpath)
+                with open(fpath, 'rb') as f:  # binary matters!
+                    req = urllib.request.Request(api_ep, data=f )
+                    req.add_header('Content-Type', ctype)
+                    req.add_header('Content-Length', fstat.st_size)
+                    log = ('< %s ' if insdb else '^ %s ') % fpath
+                    try:
+                        with url_opener.open(req) as res:
+                            msg = json.loads(res.read())
+                            log += ( insdb.upper() + '=' + msg['key'] if insdb
+                                     else ' '.join(msg['data_links']) )
+                    except urllib.error.HTTPError as he:
+                        ok = False
+                        try:  # attempt to extract API error string
+                            log += 'ERROR="%s"' % json.loads(he.read())['error']
+                        except Exception:
+                            log += 'ERROR="%s"' % he
+                    except Exception as e:
+                        ok = False
+                        log += 'ERROR="%s"' % e
+                    else:
+                        ok = True
+
+                    results.put((ok, log))
+                    tasks.task_done()
+
+    class LoggerThread(threading.Thread):
+        def run(self):
+            self.ok = True
+            while not done.is_set():
+                try:
+                    (ok, log_line) = results.get(timeout=1)
+                except queue.Empty:
+                    continue
+                self.ok = ok and self.ok
+                _logline(log_line)
+                results.task_done()
+
+    try:
+        logger = LoggerThread()
+        logger.start()
+        for _ in range(20):  # TODO: Make this value configurable.
+            SeederThread().start()
+
+        for (dirpath, dirnames, filenames) in os.walk(path):
+            for fn in filenames:
+                api_ep, ctype, insdb = API_UPLOAD_EP, 'application/octet-stream', None
+                # Identify Ouinet data files.
+                if DATA_DIR_NAME in dirpath.split(os.path.sep):
+                    ins = _insdata_ext_rx.search(fn)
+                    if ins:  # insertion data
+                        insdb = ins.group('db')
+                        api_ep = API_INSERT_EP_PFX + insdb  # insert, not upload
+                        ctype = _ctype_from_db.get(insdb)  # db-specific type
+                        if not ctype:  # unknown db
+                            continue
+                    elif not fn.endswith(DESC_FILE_EXT):  # descriptor
+                        continue  # unknown Ouinet data file
+                fpath = os.path.join(dirpath, fn)
+                tasks.put((api_ep, ctype, fpath, insdb))  # send to seeder threads
+
+        tasks.join()
+        results.join()
+    finally:
+        done.set()
+
+    return logger.ok
 
 _uri_rx = re.compile(r'^[a-z][\+\-\.-0-9a-z]+:')
 _ins_hdr_rx = re.compile(r'^X-Ouinet-Insert-(?P<db>.*)', re.IGNORECASE)

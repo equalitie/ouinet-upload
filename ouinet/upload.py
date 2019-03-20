@@ -20,6 +20,7 @@ import zlib
 # Defaults for command line options.
 CLIENT_PROXY_DEF='localhost:8080'
 INDEX_NAME_DEF='index.html'
+SEED_NJOBS_DEF=20
 
 # TODO: Use proper templating for this.
 INDEX_HEAD="""\
@@ -107,7 +108,7 @@ _ctype_from_db = {
     'bep44': 'application/x-bittorrent'
 }
 
-def seed_files(path, proxy):
+def seed_files(path, proxy, njobs=SEED_NJOBS_DEF):
     """Upload files under `path` to a Ouinet client for it to seed them.
 
     The client's HTTP proxy endpoint is given in `proxy` as a ``HOST:PORT``
@@ -117,7 +118,7 @@ def seed_files(path, proxy):
     purpose (e.g. descriptors are uploaded, insertion data is used to reinsert
     mappings).
 
-    Several uploads are done concurrently to compensate delays in seeding
+    `njobs` uploads are done concurrently to compensate delays in seeding
     files and mappings.
 
     Return whether non-fatal errors happened (e.g. there was a problem when
@@ -178,7 +179,7 @@ def seed_files(path, proxy):
     try:
         logger = LoggerThread()
         logger.start()
-        for _ in range(20):  # TODO: Make this value configurable.
+        for _ in range(njobs):
             SeederThread().start()
 
         for (dirpath, dirnames, filenames) in os.walk(path):
@@ -328,6 +329,10 @@ def main():
         '--uri-prefix', metavar="URI", default='',
         help=("URI to prepend to content paths when injecting"
               " (no default)"))
+    parser.add_argument(
+        '--seed-jobs', metavar="N", type=int, default=SEED_NJOBS_DEF,
+        help=("allow N jobs at once when seeding"
+              " (default: %d)" % SEED_NJOBS_DEF))
     parser.add_argument(
         # Normalize to avoid confusing ``os.path.{base,dir}name()``.
         'directory', metavar="DIR", type=os.path.normpath,

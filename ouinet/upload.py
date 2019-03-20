@@ -20,7 +20,7 @@ import zlib
 # Defaults for command line options.
 CLIENT_PROXY_DEF='localhost:8080'
 INDEX_NAME_DEF='index.html'
-SEED_NJOBS_DEF=20
+SEED_NJOBS_DEF=20  # arbitrarily chosen
 
 # TODO: Use proper templating for this.
 INDEX_HEAD="""\

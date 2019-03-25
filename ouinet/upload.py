@@ -146,13 +146,15 @@ def seed_files(path, proxy, njobs=SEED_NJOBS_DEF):
                     log = ('< %s ' if insdb else '^ %s ') % fpath
                     try:
                         with url_opener.open(req) as res:
-                            msg = json.loads(res.read())
+                            body = res.read().decode('utf-8')  # RFC 8259#8.1
+                            msg = json.loads(body)
                             log += ( insdb.upper() + '=' + msg['key'] if insdb
                                      else ' '.join(msg['data_links']) )
                     except urllib.error.HTTPError as he:
                         ok = False
                         try:  # attempt to extract API error string
-                            log += 'ERROR="%s"' % json.loads(he.read())['error']
+                            body = he.read().decode('utf-8')  # RFC 8259#8.1
+                            log += 'ERROR="%s"' % json.loads(body)['error']
                         except Exception:
                             log += 'ERROR="%s"' % he
                     except Exception as e:
